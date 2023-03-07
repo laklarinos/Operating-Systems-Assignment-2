@@ -12,7 +12,7 @@ sys_exit(void)
   int n;
   argint(0, &n);
   exit(n);
-  return 0;  // not reached
+  return 0; // not reached
 }
 
 uint64
@@ -42,9 +42,26 @@ sys_sbrk(void)
   int n;
 
   argint(0, &n);
+
   addr = myproc()->sz;
-  if(growproc(n) < 0)
-    return -1;
+
+  if (addr + n >= MAXVA || addr + n <= 0)
+  {
+    return addr;
+  }
+  
+  myproc()->sz += n;
+
+  if (n < 0)
+  {
+    uvmdealloc(myproc()->pagetable, addr, myproc()->sz);
+  }
+
+  if (((addr & PTE_V) == 0) && ((addr & PTE_R || addr & PTE_W) == 1))
+  {
+    // maybe for the case where addr is valid, not set and is suuposed
+    // to trigger either read or write syscall ??
+  }
   return addr;
 }
 
@@ -57,8 +74,10 @@ sys_sleep(void)
   argint(0, &n);
   acquire(&tickslock);
   ticks0 = ticks;
-  while(ticks - ticks0 < n){
-    if(killed(myproc())){
+  while (ticks - ticks0 < n)
+  {
+    if (killed(myproc()))
+    {
       release(&tickslock);
       return -1;
     }

@@ -1,0 +1,123 @@
+OS Assignment #2 
+January 2022
+Athanasios Lakes
+sdi: 11151800090
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ATTENTION !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+The following README was supposed to cover all the blurred areas of a version of the 
+code that was working properly. In the last minute I changed sth in the code that
+resulted in FAIL in vmprint. I couldnt find what was wrong and I send this piece 
+of code. 
+
+I really tried to do the assignment and its a pitty such a thing occured
+
+---------------------------------------------------------------------------------------
+                                        VM Print
+---------------------------------------------------------------------------------------
+
+For this process I made use of 2 functions and the general procedure follows that
+of the recursion. Function vmprint() takes a pagetable as a parameter and prints
+it. Later it calls the recursive function pteprint() with parameters the respective
+pagetable and an integer named level (more on this variable later).
+
+Pteprint iterates through all the entries of a page, given its entries number to be 
+512. Then, in order to print the required data, we make use of the flags. First and
+foremost, RISC-V due to its use of a 3-level structure (L0, L1, L2) needs in some way
+to avoid loading 3 PTES from memory whenever a translation is needed, if possible. 
+To attain that TLB and flags are used. More specifically, there are plenty types of 
+flags more or less known by you but the ones I use here are:
+
+1) PTE_V, to check if a PTE is present. 
+
+The fist if condition makes use of PTE_V (pte & PTE_V). PTE contains 44-bits of PPN 
+(physical page number) and 10 bits of flags. PTE_V is bit #0 (valid) and we want to 
+check if it is set (which will mean that the PTE is present). PTE_V as an argument 
+does Binary Left Shifting by 0 bits which results to value 1. pte on the other hand 
+may have multiple values according to PPN and the other flags. In order to check the
+0th bit in PTE we need to do bitwise AND operation with 1 which will result in either
+0 or 1 depending on the value of PTE_V. If the PTE is present we move on and for each 
+value between 0 and level, we print (.. ) to match the required printing format. 
+
+After this looping we use the function PTE2PA(pte) which uses shifting, again, with 
+a greater goal of accessing the PPN value. We shift to the right by 10 to get rid of
+the flags and later by 12 to the right to get rid of the 12 copied-bits belonging to
+the original address. I print pte as a pointer value, index i to demonstrate the 
+respective entry and, at last, the PPN (as a pointer as well).
+
+2) PTE_R, PTE_W
+
+The second if condition checks if PTE_V is set while also evaluating PTE_R and PTE_W. 
+I take the result of PTE_R | PTE_W to have a resulting binary number with both numbers
+on 1st and 2nd bit respectively. pte & (PTE_R | PTE_W) will result in a number greater
+than 0 if either of these flags is on PTE. If the result is 0 that means pte had both
+these bits 0. Logical AND between the result of this expression and (pte & PTE_V). Code 
+will pass the condition iff PTE_V is set and neither or PTE_R and PTE_W is 1. That would 
+mean we need to go to a deeper level. So we take the PPN of this page by calling PTE2PA 
+and the, recursively we call pteprint increasing the level by 1.
+
+---------------------------------------------------------------------------------------
+                                        SBRK
+---------------------------------------------------------------------------------------
+
+To implement the task removing memory allocation from sbrk, I removed the line growproc(n)
+so as to stop sbrk from growing the process by n size. Instead I just add n to the size 
+of myproc() and return the initial address (myproc()->sz). I make use of the funtion argint
+whose role is that of retrieving the n'th system call argument from the trap frame in the
+form of integer. If n < 0 i use uvmdealloc to return either the smalled, old size or 
+returning the new size after unmapping a certain number of pages. 
+
+---------------------------------------------------------------------------------------
+                                        LAZY
+---------------------------------------------------------------------------------------
+
+For the test Lazy Page Allocation I havent implemented code for every case which results
+in a usertests score of 95%. 
+
+In trap.c, lines 74-78 you will find the beggining of the  implementation. After using
+the given condition (r_scause() == 13) || (r_scause() == 15) I then trigger a function 
+I named lazyafternoon, named after Grant Greene's and The Roots' song which takes as parameters 
+the respective process (struct process) and the value of r_stval() returning the value of the 
+register stval which contains the address that couldn't be translated. 
+
+Function lazyafternoon(struct proc*, uint64) first checks whether the sz of the process 
+is less or equal to va which is the result of r_stval() OR if the latter is less than
+PGROUNDOWN(p->traspframe->sp), refers to the maximum value of the top of the stack, by 
+accesing stack pointer (sp). PGROUNDDOWN will result in a paged up value of the stack pointer 
+in order to check whether the non-translated address of va tried to access a memory 
+in the stack region which would be a fault (exceeded heap, stack overflow). On the other
+hand if the size of the process memory is less than the desired-to-be-translated address va, then similarly we have a fault.
+
+Some more corner cases include: checking kalloc's return value. Kalloc alllocates one 
+4096-byte page of physical memory and returns an address that the kernel can use. If
+the value of kalloc is 0 I return 0 and kill the process. Otherwise, memset() fills
+the returned memory chunk with zeros and then calls mappages() to create PTEs for virtual
+address at a = PGROUNDDOWN(va) that refer to physical addresses starting at pa which in 
+out case is the 4096 memory chunk returned by kalloc(). 
+
+"mappages" returns 0 when successful mapping and -1 for failed. As a part of "lazy
+allocation" solution, mappages was added some "continue" commands in cases of panic
+which make the functions continue the process instead of panic-ing. Other functions are 
+affected similarly too, with the examples being uvunmap and uvmcopy and walkaddr. 
+
+The idea behind such an approach is that because of the general goal of lazy allocation,
+which is to actually not allocate the memory but to fool the system of having done so by only
+increasing the value of the size index (pr->sz) and not the actuall memory segment, some 
+errors that would be triggered in the initial XV6, now dont make sense. Lazy aloccation 
+does not allocate in the first place but does so only when a desired memory segment is being 
+accessed by the process. This happens to avoid internal fragmentation that happens when 
+a process asks for memory but is not obvious how much it needs so, consequently, it is given
+more than needed. During this realization by the system that the page actually cannot 
+be found, uvunmap, uvmcopy and walkaddr were coded in a way to panic because initially, it would
+make sense to panic as the memory was supposed to be there. 
+
+Now the scenario is more or less similar with the difference that now we know about the
+panic that is about to be triggered and we hadle it. 
+
+The way to handle such cases is by putting specific panic triggers into comments and 
+replacing them with continue commands. In "mappages" we do so during the statement, 
+if (*pte & PTE_V) instead of "paniccing about remaping a memory segment which does
+not yet exist. We act accordingly for uvunmap when walk function fails or when
+PTE_V is not set. Similarly, for uvmcopy, we comment again the panic instructions 
+and replace them with continue.
+
+At last 

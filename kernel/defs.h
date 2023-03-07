@@ -177,6 +177,7 @@ int             copyinstr(pagetable_t, char *, uint64, uint64);
 //ERGASIA 2//
 void            vmprint(pagetable_t pagetable);
 void            pteprint(pagetable_t pagetable, int level);
+uint64          lazyafternoon(struct proc *p, uint64 va);
 //ERGASIA 2//
 
 // plic.c
