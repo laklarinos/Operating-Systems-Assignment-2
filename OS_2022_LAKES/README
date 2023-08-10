@@ -51,7 +51,7 @@ I take the result of PTE_R | PTE_W to have a resulting binary number with both n
 on 1st and 2nd bit respectively. pte & (PTE_R | PTE_W) will result in a number greater
 than 0 if either of these flags is on PTE. If the result is 0 that means pte had both
 these bits 0. Logical AND between the result of this expression and (pte & PTE_V). Code 
-will pass the condition iff PTE_V is set and neither or PTE_R and PTE_W is 1. That would 
+will pass the condition iff PTE_V is set and neither or both PTE_R and PTE_W is 1. That would 
 mean we need to go to a deeper level. So we take the PPN of this page by calling PTE2PA 
 and the, recursively we call pteprint increasing the level by 1.
 
@@ -63,7 +63,7 @@ To implement the task removing memory allocation from sbrk, I removed the line g
 so as to stop sbrk from growing the process by n size. Instead I just add n to the size 
 of myproc() and return the initial address (myproc()->sz). I make use of the funtion argint
 whose role is that of retrieving the n'th system call argument from the trap frame in the
-form of integer. If n < 0 i use uvmdealloc to return either the smalled, old size or 
+form of integer. If n < 0 i use uvmdealloc to return either the smaller, old size or 
 returning the new size after unmapping a certain number of pages. 
 
 ---------------------------------------------------------------------------------------
@@ -71,7 +71,7 @@ returning the new size after unmapping a certain number of pages.
 ---------------------------------------------------------------------------------------
 
 For the test Lazy Page Allocation I havent implemented code for every case which results
-in a usertests score of 95%. 
+in a usertests score of 95%.
 
 In trap.c, lines 74-78 you will find the beggining of the  implementation. After using
 the given condition (r_scause() == 13) || (r_scause() == 15) I then trigger a function 
@@ -82,7 +82,7 @@ register stval which contains the address that couldn't be translated.
 Function lazyafternoon(struct proc*, uint64) first checks whether the sz of the process 
 is less or equal to va which is the result of r_stval() OR if the latter is less than
 PGROUNDOWN(p->traspframe->sp), refers to the maximum value of the top of the stack, by 
-accesing stack pointer (sp). PGROUNDDOWN will result in a paged up value of the stack pointer 
+accesing stack pointer (sp). PGROUNDDOWN will result in a paged down value of the stack pointer 
 in order to check whether the non-translated address of va tried to access a memory 
 in the stack region which would be a fault (exceeded heap, stack overflow). On the other
 hand if the size of the process memory is less than the desired-to-be-translated address va, then similarly we have a fault.
@@ -115,7 +115,7 @@ panic that is about to be triggered and we hadle it.
 
 The way to handle such cases is by putting specific panic triggers into comments and 
 replacing them with continue commands. In "mappages" we do so during the statement, 
-if (*pte & PTE_V) instead of "paniccing about remaping a memory segment which does
+if (*pte & PTE_V) instead of "paniccing" about remaping a memory segment which does
 not yet exist. We act accordingly for uvunmap when walk function fails or when
 PTE_V is not set. Similarly, for uvmcopy, we comment again the panic instructions 
 and replace them with continue.

@@ -99,7 +99,7 @@ void usertrap(void)
 uint64 lazyafternoon(struct proc *p, uint64 va)
 {
   // p->sz <= va == out of process' memory
-  // va < PGROUNDOWN(p->trapframe->sp) == for addresses in stack, fail
+  // va <= PGROUNDOWN(p->trapframe->sp) == for addresses out of stack, fail
   if (p->sz <= va || va <= PGROUNDDOWN(p->trapframe->sp))
   {
     return 0;
